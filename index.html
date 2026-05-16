@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Выгрузка контактов компаний из Яндекс Карт в 1 клик</title>
+  <meta name="description" content="Парсер организаций Яндекс Карт для быстрого экспорта контактов компаний в XLSX: телефон, сайт, адрес, рейтинг и отзывы без ручного копирования.">
+  <meta name="keywords" content="парсер организаций яндекс карты, выгрузка контактов компаний в excel, база клиентов по яндекс картам, лидогенерация по картам, сбор контактов для отдела продаж, экспорт организаций яндекс карты xlsx">
+  <style>
+    :root {
+      --bg: #051126;
+      --surface: rgba(13, 27, 49, 0.82);
+      --line: rgba(137, 181, 232, 0.34);
+      --text: #eef6ff;
+      --muted: #b5cae6;
+      --primary: #37d0ff;
+      --accent: #22d48a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Gill Sans", "Segoe UI", sans-serif;
+      color: var(--text);
+      line-height: 1.56;
+      background:
+        radial-gradient(circle at 5% 0, #0c2f67 0, transparent 30%),
+        radial-gradient(circle at 90% 12%, #0d5a4a 0, transparent 28%),
+        radial-gradient(circle at 50% 100%, #082a45 0, transparent 35%),
+        var(--bg);
+    }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 26px 20px 58px; }
+    .hero {
+      padding: 30px;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: linear-gradient(160deg, rgba(16,36,65,0.92), rgba(6,20,36,0.88));
+      box-shadow: 0 28px 56px rgba(1, 8, 24, 0.45);
+      backdrop-filter: blur(4px);
+    }
+    .hero-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+    @media (max-width: 880px) { .hero-top { grid-template-columns: 1fr; } }
+    .tag {
+      display: inline-block;
+      background: rgba(55,208,255,0.16);
+      border: 1px solid rgba(55,208,255,0.45);
+      color: #beeeff;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 12px;
+    }
+    h1 { margin: 0; font-size: clamp(31px, 4.8vw, 60px); line-height: 1.08; }
+    .lead { margin: 14px 0 0; font-size: 20px; color: var(--muted); max-width: 760px; }
+    .hero-cta { margin-top: 20px; }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      padding: 12px 18px;
+      border-radius: 13px;
+      font-weight: 700;
+    }
+    .btn.main { background: linear-gradient(95deg, var(--primary), var(--accent)); color: #032038; }
+    .btn.alt { border: 1px solid var(--line); color: var(--text); }
+    .metrics {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(6, 17, 34, 0.55);
+      padding: 14px;
+    }
+    .metric strong { display: block; font-size: 31px; line-height: 1; color: var(--accent); }
+    section { margin-top: 18px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      backdrop-filter: blur(3px);
+    }
+    h2 { margin: 0 0 10px; font-size: 25px; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 0; color: var(--muted); }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .table th, .table td {
+      border: 1px solid rgba(137,181,232,0.35);
+      padding: 10px;
+      text-align: left;
+    }
+    .table th { color: #d8f0ff; background: rgba(55,208,255,0.1); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+    }
+    .step {
+      border: 1px dashed rgba(137,181,232,0.5);
+      border-radius: 12px;
+      background: rgba(4,13,27,0.5);
+      padding: 12px;
+      color: #d2e7ff;
+    }
+    .problems {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) { .problems { grid-template-columns: 1fr; } }
+    .warn {
+      background: rgba(66, 42, 10, 0.55);
+      border-color: rgba(255, 184, 92, 0.45);
+    }
+    .solve {
+      background: rgba(11, 46, 34, 0.55);
+      border-color: rgba(70, 210, 152, 0.5);
+    }
+    .cta {
+      background: linear-gradient(140deg, rgba(18,53,98,0.96), rgba(10,64,52,0.96));
+      border-color: rgba(90,199,190,0.58);
+    }
+    .video {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) { .video { grid-template-columns: 1fr; } }
+    .preview {
+      min-height: 200px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(145deg, rgba(55,208,255,0.2), rgba(34,212,138,0.18)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 34px),
+        rgba(6, 16, 30, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 14px;
+      color: #d6f4ff;
+      font-weight: 700;
+    }
+    .faq-item + .faq-item { margin-top: 10px; }
+    .support { margin-top: 10px; font-size: 14px; color: #d6ebff; }
+    .support a { color: #9ce8ff; }
+    .seo {
+      font-size: 14px;
+      color: #a6c3e7;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(7, 19, 35, 0.75);
+    }
+    ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <span class="tag">Выгрузка контактов компаний в 1 клик</span>
+          <h1>Собирайте контакты компаний из Яндекс Карт в XLSX за минуты</h1>
+          <p class="lead">Телефоны, сайты, адреса, рейтинги и отзывы в одной таблице без ручного копирования карточек.</p>
+          <div class="hero-cta">
+            <a class="btn main" href="https://chromewebstore.google.com/detail/ya-maps-parser-%E2%80%94-%D0%BF%D0%B0%D1%80%D1%81%D0%B5%D1%80-%D0%BA/aacfjdlinogfkihpmhaagoejofgbnlgd" target="_blank" rel="noopener">Попробовать бесплатно</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <article class="metric"><strong>4.9</strong><span>оценка инструмента</span></article>
+        <article class="metric"><strong>2000+</strong><span>пользователей</span></article>
+        <article class="metric"><strong>10 000</strong><span>строк в одной выгрузке</span></article>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Для кого</h2>
+      <div class="grid-3">
+        <article>
+          <h3>SDR и отделы продаж</h3>
+          <p>Собирайте базу клиентов по Яндекс Картам для холодных касаний и прозвона.</p>
+        </article>
+        <article>
+          <h3>BDM и аккаунт-менеджеры</h3>
+          <p>Быстро формируйте списки компаний для партнерств и локального развития.</p>
+        </article>
+        <article>
+          <h3>Агентства лидгена</h3>
+          <p>Делайте выгрузку контактов компаний в Excel под клиентские кампании.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Что в выгрузке</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Поле</th>
+            <th>Как используется</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Телефон</td>
+            <td>Быстрый прозвон и валидация лида</td>
+          </tr>
+          <tr>
+            <td>Сайт</td>
+            <td>Проверка релевантности и доп. исследование</td>
+          </tr>
+          <tr>
+            <td>Адрес</td>
+            <td>Региональная сегментация базы</td>
+          </tr>
+          <tr>
+            <td>Рейтинг и отзывы</td>
+            <td>Приоритизация контактов для отдела продаж</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Как работает</h2>
+      <div class="steps">
+        <article class="step"><strong>1.</strong> Введите запрос на Яндекс Картах по нужной нише.</article>
+        <article class="step"><strong>2.</strong> Прокрутите выдачу компаний.</article>
+        <article class="step"><strong>3.</strong> Нажмите экспорт организаций Яндекс Карты XLSX.</article>
+        <article class="step"><strong>4.</strong> Получите готовую таблицу и загрузите в CRM.</article>
+      </div>
+    </section>
+
+    <section class="problems">
+      <article class="card warn">
+        <h2>Частые ошибки вручную</h2>
+        <ul>
+          <li>Потеря части карточек при копировании.</li>
+          <li>Несогласованный формат у менеджеров.</li>
+          <li>Много времени на ручной сбор контактов для отдела продаж.</li>
+        </ul>
+      </article>
+      <article class="card solve">
+        <h2>Как решает парсер</h2>
+        <ul>
+          <li>Автоматический сбор контактов организаций.</li>
+          <li>Структурированная выгрузка компаний из Яндекс Карт в XLSX.</li>
+          <li>Одинаковый формат базы для всех команд.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="card cta">
+      <h2>Соберите первую базу в один проход</h2>
+      <p>Парсер организаций Яндекс Карты сокращает путь от запроса к рабочему лид-листу для CRM.</p>
+      <p style="margin-top: 10px;"><a class="btn main" href="https://chromewebstore.google.com/detail/ya-maps-parser-%E2%80%94-%D0%BF%D0%B0%D1%80%D1%81%D0%B5%D1%80-%D0%BA/aacfjdlinogfkihpmhaagoejofgbnlgd" target="_blank" rel="noopener">Попробовать бесплатно</a></p>
+    </section>
+
+    <section class="video">
+      <div class="preview">Видео-превью: от поиска на карте до XLSX-файла с контактами компаний</div>
+      <article class="card">
+        <h2>Видео-разбор</h2>
+        <p>Показываем, как сделать выгрузку контактов компаний в Excel и сразу передать файл в работу.</p>
+        <p style="margin-top: 10px;"><a class="btn alt" href="https://www.youtube.com/results?search_query=yandex+maps+scraper+xlsx" target="_blank" rel="noopener">Смотреть на YouTube</a></p>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>FAQ + поддержка</h2>
+      <div class="faq-item">
+        <h3>Подойдет ли для холодных продаж?</h3>
+        <p>Да. Страница и функционал ориентированы на быстрый сбор контактов компаний под исходящий поток.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Нужно ли вручную копировать телефоны?</h3>
+        <p>Нет. Данные собираются автоматически и экспортируются в XLSX.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Можно ли использовать выгрузку в CRM?</h3>
+        <p>Да. Файл подходит для импорта и распределения лидов между менеджерами.</p>
+      </div>
+      <div class="support">Есть вопросы? <a href="https://t.me/aza_support" target="_blank" rel="noopener">https://t.me/aza_support</a></div>
+    </section>
+
+    <section class="seo">
+      SEO: парсер организаций яндекс карты, выгрузка контактов компаний в excel, база клиентов по яндекс картам, лидогенерация по картам, сбор контактов для отдела продаж, экспорт организаций яндекс карты xlsx.
+    </section>
+  </main>
+</body>
+</html>
